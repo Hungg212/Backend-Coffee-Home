@@ -50,7 +50,7 @@ router.get('/', async (req: Request, res: Response) => {
         where,
         include: {
           category: { select: { id: true, name: true, slug: true } },
-          reviews: { select: { rating: true } },
+          _count: { select: { reviews: true } },
         },
         orderBy: { [String(sortBy)]: sortOrder },
         skip,
@@ -60,18 +60,12 @@ router.get('/', async (req: Request, res: Response) => {
     ]);
 
     // Calculate average rating for each product
-    const productsWithRating = products.map((p) => {
-      const avgRating =
-        p.reviews.length > 0
-          ? p.reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / p.reviews.length
-          : 0;
-      return {
-        ...p,
-        gallery: p.gallery ? JSON.parse(p.gallery) : [],
-        averageRating: Number(avgRating.toFixed(1)),
-        reviewCount: p.reviews.length,
-      };
-    });
+    const productsWithRating = products.map((p) => ({
+      ...p,
+      gallery: p.gallery ? JSON.parse(p.gallery as string) : [],
+      averageRating: 0,
+      reviewCount: p._count.reviews,
+    }));
 
     res.json({
       products: productsWithRating,
@@ -95,24 +89,18 @@ router.get('/featured', async (_req, res: Response) => {
       where: { featured: true },
       include: {
         category: { select: { id: true, name: true, slug: true } },
-        reviews: { select: { rating: true } },
+        _count: { select: { reviews: true } },
       },
       take: 8,
       orderBy: { createdAt: 'desc' },
     });
 
-    const productsWithRating = products.map((p) => {
-      const avgRating =
-        p.reviews.length > 0
-          ? p.reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / p.reviews.length
-          : 0;
-      return {
-        ...p,
-        gallery: p.gallery ? JSON.parse(p.gallery) : [],
-        averageRating: Number(avgRating.toFixed(1)),
-        reviewCount: p.reviews.length,
-      };
-    });
+    const productsWithRating = products.map((p) => ({
+      ...p,
+      gallery: p.gallery ? JSON.parse(p.gallery as string) : [],
+      averageRating: 0,
+      reviewCount: p._count.reviews,
+    }));
 
     res.json(productsWithRating);
   } catch (error: unknown) {
@@ -124,7 +112,7 @@ router.get('/featured', async (_req, res: Response) => {
 // GET /products/:slug - Get product by slug
 router.get('/:slug', async (req: Request, res: Response) => {
   try {
-    const slug = req.params.slug;
+    const slug = String(req.params.slug);
     const product = await prisma.product.findUnique({
       where: { slug },
       include: {
@@ -173,7 +161,7 @@ router.get('/:slug', async (req: Request, res: Response) => {
 // GET /products/:id/reviews - Get product reviews
 router.get('/:id/reviews', async (req: Request, res: Response) => {
   try {
-    const productId = req.params.id;
+    const productId = String(req.params.id);
     const reviews = await prisma.review.findMany({
       where: { productId },
       include: { user: { select: { id: true, name: true } } },
@@ -206,7 +194,7 @@ router.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Respon
 
     // Check if user already reviewed this product
     const existingReview = await prisma.review.findFirst({
-      where: { productId, userId: req.userId },
+      where: { productId, userId: String(req.userId) },
     });
 
     if (existingReview) {

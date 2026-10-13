@@ -69,7 +69,7 @@ router.post('/products', async (req: AuthRequest, res: Response) => {
 // PUT /admin/products/:id - Update product
 router.put('/products/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { name, slug, description, price, imageUrl, gallery, origin, roastLevel, weight, stock, featured, categoryId } = req.body;
 
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -116,7 +116,7 @@ router.put('/products/:id', async (req: AuthRequest, res: Response) => {
 // DELETE /admin/products/:id - Delete product
 router.delete('/products/:id', async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
+    const id = String(req.params.id);
     await prisma.product.delete({ where: { id } });
     res.json({ message: 'Product deleted successfully' });
   } catch (error: unknown) {
@@ -155,7 +155,7 @@ router.get('/orders', async (_req: Request, res: Response) => {
 router.put('/orders/:id/status', async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
-    const orderId = req.params.id;
+    const orderId = String(req.params.id);
     const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
 
     if (!validStatuses.includes(status)) {
