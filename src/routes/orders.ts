@@ -109,8 +109,9 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // GET /orders/:id - Get order by ID (auth required, own orders or admin)
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
+    const orderId = req.params.id;
     const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
+      where: { id: orderId },
       include: {
         items: {
           include: {

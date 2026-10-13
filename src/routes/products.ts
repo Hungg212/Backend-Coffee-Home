@@ -16,7 +16,7 @@ router.get('/', async (req: Request, res: Response) => {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = '1',
-      limit = '12'
+      limit = '12',
     } = req.query;
 
     const where: Record<string, unknown> = {};
@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response) => {
       where.OR = [
         { name: { contains: String(search) } },
         { description: { contains: String(search) } },
-        { origin: { contains: String(search) } }
+        { origin: { contains: String(search) } },
       ];
     }
 
@@ -50,25 +50,26 @@ router.get('/', async (req: Request, res: Response) => {
         where,
         include: {
           category: { select: { id: true, name: true, slug: true } },
-          reviews: { select: { rating: true } }
+          reviews: { select: { rating: true } },
         },
         orderBy: { [String(sortBy)]: sortOrder },
         skip,
-        take: Number(limit)
+        take: Number(limit),
       }),
-      prisma.product.count({ where })
+      prisma.product.count({ where }),
     ]);
 
     // Calculate average rating for each product
     const productsWithRating = products.map((p) => {
-      const avgRating = p.reviews.length > 0
-        ? p.reviews.reduce((sum, r) => sum + r.rating, 0) / p.reviews.length
-        : 0;
+      const avgRating =
+        p.reviews.length > 0
+          ? p.reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / p.reviews.length
+          : 0;
       return {
         ...p,
         gallery: p.gallery ? JSON.parse(p.gallery) : [],
         averageRating: Number(avgRating.toFixed(1)),
-        reviewCount: p.reviews.length
+        reviewCount: p.reviews.length,
       };
     });
 
@@ -78,8 +79,8 @@ router.get('/', async (req: Request, res: Response) => {
         page: Number(page),
         limit: Number(limit),
         total,
-        pages: Math.ceil(total / Number(limit))
-      }
+        pages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch products';
@@ -94,21 +95,22 @@ router.get('/featured', async (_req, res: Response) => {
       where: { featured: true },
       include: {
         category: { select: { id: true, name: true, slug: true } },
-        reviews: { select: { rating: true } }
+        reviews: { select: { rating: true } },
       },
       take: 8,
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     const productsWithRating = products.map((p) => {
-      const avgRating = p.reviews.length > 0
-        ? p.reviews.reduce((sum, r) => sum + r.rating, 0) / p.reviews.length
-        : 0;
+      const avgRating =
+        p.reviews.length > 0
+          ? p.reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / p.reviews.length
+          : 0;
       return {
         ...p,
         gallery: p.gallery ? JSON.parse(p.gallery) : [],
         averageRating: Number(avgRating.toFixed(1)),
-        reviewCount: p.reviews.length
+        reviewCount: p.reviews.length,
       };
     });
 
@@ -122,16 +124,17 @@ router.get('/featured', async (_req, res: Response) => {
 // GET /products/:slug - Get product by slug
 router.get('/:slug', async (req: Request, res: Response) => {
   try {
+    const slug = req.params.slug;
     const product = await prisma.product.findUnique({
-      where: { slug: req.params.slug },
+      where: { slug },
       include: {
         category: { select: { id: true, name: true, slug: true } },
         reviews: {
           include: { user: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'desc' },
-          take: 20
-        }
-      }
+          take: 20,
+        },
+      },
     });
 
     if (!product) {
@@ -139,18 +142,19 @@ router.get('/:slug', async (req: Request, res: Response) => {
       return;
     }
 
-    const avgRating = product.reviews.length > 0
-      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
-      : 0;
+    const avgRating =
+      product.reviews.length > 0
+        ? product.reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / product.reviews.length
+        : 0;
 
     // Get related products from same category
     const related = await prisma.product.findMany({
       where: {
         categoryId: product.categoryId,
-        id: { not: product.id }
+        id: { not: product.id },
       },
       take: 4,
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     res.json({
@@ -158,7 +162,7 @@ router.get('/:slug', async (req: Request, res: Response) => {
       gallery: product.gallery ? JSON.parse(product.gallery) : [],
       averageRating: Number(avgRating.toFixed(1)),
       reviewCount: product.reviews.length,
-      related
+      related,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch product';
@@ -169,10 +173,11 @@ router.get('/:slug', async (req: Request, res: Response) => {
 // GET /products/:id/reviews - Get product reviews
 router.get('/:id/reviews', async (req: Request, res: Response) => {
   try {
+    const productId = req.params.id;
     const reviews = await prisma.review.findMany({
-      where: { productId: req.params.id },
+      where: { productId },
       include: { user: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     res.json(reviews);
@@ -185,6 +190,7 @@ router.get('/:id/reviews', async (req: Request, res: Response) => {
 // POST /products/:id/reviews - Add review (auth required)
 router.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
+    const productId = req.params.id;
     const { rating, comment } = req.body;
 
     if (!rating || rating < 1 || rating > 5) {
@@ -192,7 +198,7 @@ router.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Respon
       return;
     }
 
-    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) {
       res.status(404).json({ error: 'Product not found' });
       return;
@@ -200,7 +206,7 @@ router.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Respon
 
     // Check if user already reviewed this product
     const existingReview = await prisma.review.findFirst({
-      where: { productId: req.params.id, userId: req.userId }
+      where: { productId, userId: req.userId },
     });
 
     if (existingReview) {
@@ -208,7 +214,7 @@ router.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Respon
       const updated = await prisma.review.update({
         where: { id: existingReview.id },
         data: { rating, comment },
-        include: { user: { select: { id: true, name: true } } }
+        include: { user: { select: { id: true, name: true } } },
       });
       res.json(updated);
       return;
@@ -218,10 +224,10 @@ router.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Respon
       data: {
         rating,
         comment,
-        productId: req.params.id,
-        userId: req.userId!
+        productId,
+        userId: req.userId!,
       },
-      include: { user: { select: { id: true, name: true } } }
+      include: { user: { select: { id: true, name: true } } },
     });
 
     res.status(201).json(review);

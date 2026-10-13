@@ -35,7 +35,7 @@ router.post('/products', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const existing = await prisma.product.findUnique({ where: { slug } });
+    const existing = await prisma.product.findUnique({ where: { slug: String(slug) } });
     if (existing) {
       res.status(400).json({ error: 'Slug already exists' });
       return;
@@ -80,7 +80,7 @@ router.put('/products/:id', async (req: AuthRequest, res: Response) => {
 
     // Check slug uniqueness if changed
     if (slug && slug !== existing.slug) {
-      const slugExists = await prisma.product.findUnique({ where: { slug } });
+      const slugExists = await prisma.product.findUnique({ where: { slug: String(slug) } });
       if (slugExists) {
         res.status(400).json({ error: 'Slug already exists' });
         return;
@@ -116,7 +116,8 @@ router.put('/products/:id', async (req: AuthRequest, res: Response) => {
 // DELETE /admin/products/:id - Delete product
 router.delete('/products/:id', async (req: Request, res: Response) => {
   try {
-    await prisma.product.delete({ where: { id: req.params.id } });
+    const id = req.params.id;
+    await prisma.product.delete({ where: { id } });
     res.json({ message: 'Product deleted successfully' });
   } catch (error: unknown) {
     res.status(404).json({ error: 'Product not found' });
@@ -154,6 +155,7 @@ router.get('/orders', async (_req: Request, res: Response) => {
 router.put('/orders/:id/status', async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
+    const orderId = req.params.id;
     const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
 
     if (!validStatuses.includes(status)) {
@@ -162,7 +164,7 @@ router.put('/orders/:id/status', async (req: Request, res: Response) => {
     }
 
     const order = await prisma.order.update({
-      where: { id: req.params.id },
+      where: { id: orderId },
       data: { status },
       include: {
         user: { select: { id: true, name: true, email: true } },

@@ -17,13 +17,15 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://coffee-home-blend.onrender.com',
+  process.env.RENDER_URL,
+].filter((origin): origin is string => typeof origin === 'string' && origin.length > 0);
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'https://coffee-home-blend.onrender.com',
-    process.env.RENDER_URL
-  ].filter(Boolean),
+  origin: allowedOrigins,
   credentials: true
 }));
 
